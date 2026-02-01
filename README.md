@@ -51,6 +51,17 @@ context-frame report /path/to/repo --format markdown
 - **AI Rules**: ai-rules/, .generated-ai-rules/ (block/ai-rules automation)
 - **OpenAI Codex**: CODEX.md, .codex/
 
+## Recent Updates
+
+- Added detection patterns for Goose, Cline, Firebender, AMP, and AI Rules:
+  - Goose: HOWTOAI.md, .goosehints, .gooseignore
+  - Cline: .clinerules
+  - Firebender: firebender.json
+  - AMP: .amp/, amp.json
+  - AI Rules: ai-rules/, ai-rules/index.md, ai-rules/framework-overview.md, ai-rules/ai-usage-tracking.md, .generated-ai-rules/, @ai-rules/
+- Fixed reference extraction to ignore fenced code blocks when parsing inline code paths.
+- Replaced emoji in CLI output with ASCII to avoid mojibake on Windows terminals.
+
 ## Quality Scoring
 
 Quality is measured on a 0-10 scale based on:
@@ -64,9 +75,9 @@ Quality is measured on a 0-10 scale based on:
 ## Example Output
 
 ```
-═══════════════════════════════════════════════════════════════
+===============================================================
                     CONTEXT FRAME REPORT
-═══════════════════════════════════════════════════════════════
+===============================================================
 
 Repository: /path/to/project
 
@@ -74,11 +85,11 @@ MATURITY LEVEL
   Level 5: Multi-Agent Ready
   Multiple agents and MCP configurations
 
-  █████░░░ 5/8
+  #####--- 5/8
 
 QUALITY SCORE
   8.5/10 (Weight: 45)
-  █████████░
+  #########-
 
 TOOL COVERAGE
   Claude Code (weight: 25)
@@ -90,15 +101,15 @@ TOOL COVERAGE
     - .cursorrules
 
 RECOMMENDATIONS
-  → Create ARCHITECTURE.md to document your system design
-  → Set up .claude/commands/ for custom automation
-═══════════════════════════════════════════════════════════════
+  -> Create ARCHITECTURE.md to document your system design
+  -> Set up .claude/commands/ for custom automation
+===============================================================
 ```
 
 ## Roadmap
 
 See [TODO.md](./TODO.md) for planned features including:
-- 🎨 **TUI Interface** via [OpenTUI](https://github.com/anomalyco/opentui)
+- **TUI Interface** via [OpenTUI](https://github.com/anomalyco/opentui)
 - GitHub Action for CI
 - VS Code extension
 
