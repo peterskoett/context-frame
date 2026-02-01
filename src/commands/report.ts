@@ -77,8 +77,8 @@ function printMarkdownReport(score: ScoreResult, scanResult: Awaited<ReturnType<
   lines.push(`| Level | Status |`);
   lines.push(`|-------|--------|`);
   for (const level of MATURITY_LEVELS) {
-    const status = level.level <= score.maturityLevel ? '✅' : '⬜';
-    const current = level.level === score.maturityLevel ? ' ← Current' : '';
+    const status = level.level <= score.maturityLevel ? 'OK' : '--';
+    const current = level.level === score.maturityLevel ? ' <- Current' : '';
     lines.push(`| ${level.level}. ${level.name} | ${status}${current} |`);
   }
   lines.push('');
@@ -94,7 +94,7 @@ function printMarkdownReport(score: ScoreResult, scanResult: Awaited<ReturnType<
 
   // Progress bar in markdown
   const filled = Math.round(score.qualityScore);
-  const bar = '█'.repeat(filled) + '░'.repeat(10 - filled);
+  const bar = '#'.repeat(filled) + '-'.repeat(10 - filled);
   lines.push(`\`${bar}\`\n`);
 
   // Metrics

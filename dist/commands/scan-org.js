@@ -8,7 +8,7 @@ const chalk_1 = __importDefault(require("chalk"));
 const org_scanner_1 = require("../services/org-scanner");
 const scorer_1 = require("../services/scorer");
 async function scanOrgCommand(org, format = 'terminal') {
-    console.log(chalk_1.default.cyan(`\n🔍 Scanning GitHub org: ${org}\n`));
+    console.log(chalk_1.default.cyan(`\n[scan] Scanning GitHub org: ${org}\n`));
     try {
         const orgResult = await (0, org_scanner_1.scanOrg)(org);
         const summaries = orgResult.repos.map(repo => {

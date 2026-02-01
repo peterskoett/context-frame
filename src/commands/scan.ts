@@ -12,7 +12,7 @@ export async function scanCommand(
   watch = false
 ): Promise<void> {
   const runScan = async (): Promise<void> => {
-    console.log(chalk.cyan('\nðŸ” Scanning repository for AI context maturity...\n'));
+    console.log(chalk.cyan('\n[scan] Scanning repository for AI context maturity...\n'));
 
     try {
       const scanResult = await scanRepository(targetPath);
@@ -72,9 +72,9 @@ export async function scanCommand(
 
 function printTerminalReport(score: ScoreResult, basePath: string, scanResult: ReturnType<typeof scanRepository> extends Promise<infer T> ? T : never): void {
   // Header
-  console.log(chalk.bold.white('═══════════════════════════════════════════════════════════════'));
+  console.log(chalk.bold.white('==============================================================='));
   console.log(chalk.bold.cyan('                    CONTEXT FRAME REPORT'));
-  console.log(chalk.bold.white('═══════════════════════════════════════════════════════════════\n'));
+  console.log(chalk.bold.white('===============================================================\n'));
 
   // Path
   console.log(chalk.gray(`Repository: ${basePath}\n`));
@@ -124,7 +124,7 @@ function printTerminalReport(score: ScoreResult, basePath: string, scanResult: R
   if (score.recommendations.length > 0) {
     console.log(chalk.bold.white('\nRECOMMENDATIONS'));
     for (const rec of score.recommendations) {
-      console.log(chalk.yellow(`  → ${rec}`));
+      console.log(chalk.yellow(`  -> ${rec}`));
     }
   }
 
@@ -155,7 +155,7 @@ function printTerminalReport(score: ScoreResult, basePath: string, scanResult: R
     }
   }
 
-  console.log(chalk.bold.white('\n═══════════════════════════════════════════════════════════════\n'));
+  console.log(chalk.bold.white('\n===============================================================\n'));
 }
 
 function printJsonReport(
@@ -366,9 +366,9 @@ function printLevelBar(level: number): void {
   const bar = [];
   for (let i = 1; i <= 8; i++) {
     if (i <= level) {
-      bar.push(getLevelColor(i)('█'));
+      bar.push(getLevelColor(i)('#'));
     } else {
-      bar.push(chalk.gray('░'));
+      bar.push(chalk.gray('-'));
     }
   }
   console.log('  ' + bar.join('') + chalk.gray(` ${level}/8`));
@@ -381,7 +381,7 @@ function printScoreBar(score: number): void {
   const filled = Math.round(score);
   const empty = 10 - filled;
   const color = score >= 7 ? chalk.green : score >= 4 ? chalk.yellow : chalk.red;
-  console.log('  ' + color('█'.repeat(filled)) + chalk.gray('░'.repeat(empty)));
+  console.log('  ' + color('#'.repeat(filled)) + chalk.gray('-'.repeat(empty)));
 }
 
 function getLevelColor(level: number): chalk.Chalk {

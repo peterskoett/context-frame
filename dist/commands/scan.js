@@ -10,7 +10,7 @@ const scanner_1 = require("../services/scanner");
 const scorer_1 = require("../services/scorer");
 async function scanCommand(targetPath, format = 'terminal', watch = false) {
     const runScan = async () => {
-        console.log(chalk_1.default.cyan('\nðŸ” Scanning repository for AI context maturity...\n'));
+        console.log(chalk_1.default.cyan('\n[scan] Scanning repository for AI context maturity...\n'));
         try {
             const scanResult = await (0, scanner_1.scanRepository)(targetPath);
             const score = (0, scorer_1.calculateScore)(scanResult);
@@ -63,9 +63,9 @@ async function scanCommand(targetPath, format = 'terminal', watch = false) {
 }
 function printTerminalReport(score, basePath, scanResult) {
     // Header
-    console.log(chalk_1.default.bold.white('═══════════════════════════════════════════════════════════════'));
+    console.log(chalk_1.default.bold.white('==============================================================='));
     console.log(chalk_1.default.bold.cyan('                    CONTEXT FRAME REPORT'));
-    console.log(chalk_1.default.bold.white('═══════════════════════════════════════════════════════════════\n'));
+    console.log(chalk_1.default.bold.white('===============================================================\n'));
     // Path
     console.log(chalk_1.default.gray(`Repository: ${basePath}\n`));
     // Maturity Level with visual
@@ -107,7 +107,7 @@ function printTerminalReport(score, basePath, scanResult) {
     if (score.recommendations.length > 0) {
         console.log(chalk_1.default.bold.white('\nRECOMMENDATIONS'));
         for (const rec of score.recommendations) {
-            console.log(chalk_1.default.yellow(`  → ${rec}`));
+            console.log(chalk_1.default.yellow(`  -> ${rec}`));
         }
     }
     // Reference validation
@@ -135,7 +135,7 @@ function printTerminalReport(score, basePath, scanResult) {
             console.log(chalk_1.default.gray(`    - ${entry.file}: ${entry.count} commits`));
         }
     }
-    console.log(chalk_1.default.bold.white('\n═══════════════════════════════════════════════════════════════\n'));
+    console.log(chalk_1.default.bold.white('\n===============================================================\n'));
 }
 function printJsonReport(score, basePath, scanResult) {
     const report = buildReportData(score, basePath, scanResult);
@@ -313,10 +313,10 @@ function printLevelBar(level) {
     const bar = [];
     for (let i = 1; i <= 8; i++) {
         if (i <= level) {
-            bar.push(getLevelColor(i)('█'));
+            bar.push(getLevelColor(i)('#'));
         }
         else {
-            bar.push(chalk_1.default.gray('░'));
+            bar.push(chalk_1.default.gray('-'));
         }
     }
     console.log('  ' + bar.join('') + chalk_1.default.gray(` ${level}/8`));
@@ -327,7 +327,7 @@ function printScoreBar(score) {
     const filled = Math.round(score);
     const empty = 10 - filled;
     const color = score >= 7 ? chalk_1.default.green : score >= 4 ? chalk_1.default.yellow : chalk_1.default.red;
-    console.log('  ' + color('█'.repeat(filled)) + chalk_1.default.gray('░'.repeat(empty)));
+    console.log('  ' + color('#'.repeat(filled)) + chalk_1.default.gray('-'.repeat(empty)));
 }
 function getLevelColor(level) {
     if (level <= 2)

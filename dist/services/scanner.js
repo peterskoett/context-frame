@@ -233,7 +233,8 @@ function extractReferences(content) {
         }
         results.add(stripAnchor(raw));
     }
-    const inlineCodeMatches = content.matchAll(/`([^`]+)`/g);
+    const contentWithoutFences = stripFencedCodeBlocks(content);
+    const inlineCodeMatches = contentWithoutFences.matchAll(/`([^`]+)`/g);
     for (const match of inlineCodeMatches) {
         const raw = match[1].trim();
         if (!looksLikePath(raw) || isSkippableReference(raw)) {
@@ -242,6 +243,14 @@ function extractReferences(content) {
         results.add(stripAnchor(raw));
     }
     return Array.from(results);
+}
+function stripFencedCodeBlocks(content) {
+    if (!content) {
+        return content;
+    }
+    return content
+        .replace(/```[\s\S]*?```/g, '')
+        .replace(/~~~[\s\S]*?~~~/g, '');
 }
 function looksLikePath(value) {
     return value.startsWith('./') || value.startsWith('../') || value.includes('/') || value.includes('\\');

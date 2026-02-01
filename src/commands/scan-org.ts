@@ -5,7 +5,7 @@ import { calculateScore } from '../services/scorer';
 export type OrgReportFormat = 'terminal' | 'json' | 'markdown' | 'csv';
 
 export async function scanOrgCommand(org: string, format: OrgReportFormat = 'terminal'): Promise<void> {
-  console.log(chalk.cyan(`\n🔍 Scanning GitHub org: ${org}\n`));
+  console.log(chalk.cyan(`\n[scan] Scanning GitHub org: ${org}\n`));
 
   try {
     const orgResult = await scanOrg(org);

@@ -278,7 +278,8 @@ function extractReferences(content: string): string[] {
     results.add(stripAnchor(raw));
   }
 
-  const inlineCodeMatches = content.matchAll(/`([^`]+)`/g);
+  const contentWithoutFences = stripFencedCodeBlocks(content);
+  const inlineCodeMatches = contentWithoutFences.matchAll(/`([^`]+)`/g);
   for (const match of inlineCodeMatches) {
     const raw = match[1].trim();
     if (!looksLikePath(raw) || isSkippableReference(raw)) {
@@ -288,6 +289,15 @@ function extractReferences(content: string): string[] {
   }
 
   return Array.from(results);
+}
+
+function stripFencedCodeBlocks(content: string): string {
+  if (!content) {
+    return content;
+  }
+  return content
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/~~~[\s\S]*?~~~/g, '');
 }
 
 function looksLikePath(value: string): boolean {
