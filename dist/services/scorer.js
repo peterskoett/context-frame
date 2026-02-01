@@ -1,0 +1,151 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.calculateScore = calculateScore;
+const scanner_1 = require("./scanner");
+const levels_1 = require("../models/levels");
+const path = __importStar(require("path"));
+function calculateScore(scanResult) {
+    const toolBreakdown = {};
+    let totalWeight = 0;
+    let maxLevelReached = 1;
+    const levelsSatisfied = new Set([1]);
+    // Aggregate quality metrics
+    const qualityMetrics = {
+        sections: 0,
+        filePaths: 0,
+        commands: 0,
+        constraints: 0,
+        wordCount: 0
+    };
+    // Process detected files
+    for (const detected of scanResult.detectedFiles) {
+        const tool = detected.pattern.tool;
+        if (!toolBreakdown[tool]) {
+            toolBreakdown[tool] = { files: [], weight: 0 };
+        }
+        toolBreakdown[tool].files.push(detected.path);
+        toolBreakdown[tool].weight += detected.pattern.weight;
+        totalWeight += detected.pattern.weight;
+        // Track which levels are satisfied
+        levelsSatisfied.add(detected.pattern.level);
+        // Analyze content quality for markdown files
+        if (detected.path.endsWith('.md')) {
+            const fullPath = path.join(scanResult.basePath, detected.path);
+            const metrics = (0, scanner_1.analyzeFileContent)(fullPath);
+            qualityMetrics.sections += metrics.sections;
+            qualityMetrics.filePaths += metrics.filePaths;
+            qualityMetrics.commands += metrics.commands;
+            qualityMetrics.constraints += metrics.constraints;
+            qualityMetrics.wordCount += metrics.wordCount;
+        }
+        else if (detected.wordCount) {
+            qualityMetrics.wordCount += detected.wordCount;
+        }
+    }
+    // Determine maturity level - highest level with files detected
+    // (More generous: show progress even if lower levels incomplete)
+    for (let level = 8; level >= 1; level--) {
+        if (levelsSatisfied.has(level)) {
+            maxLevelReached = level;
+            break;
+        }
+    }
+    // Calculate quality score (0-10)
+    const qualityScore = calculateQualityScore(qualityMetrics, totalWeight);
+    // Generate recommendations
+    const recommendations = generateRecommendations(scanResult, maxLevelReached, qualityMetrics);
+    const level = levels_1.MATURITY_LEVELS.find(l => l.level === maxLevelReached) || levels_1.MATURITY_LEVELS[0];
+    return {
+        maturityLevel: maxLevelReached,
+        maturityName: level.name,
+        maturityDescription: level.description,
+        qualityScore,
+        totalWeight,
+        toolBreakdown,
+        qualityMetrics,
+        recommendations
+    };
+}
+function calculateQualityScore(metrics, totalWeight) {
+    // Score components (each 0-2 points, total 10)
+    const sectionScore = Math.min(metrics.sections / 5, 2);
+    const filePathScore = Math.min(metrics.filePaths / 10, 2);
+    const commandScore = Math.min(metrics.commands / 10, 2);
+    const constraintScore = Math.min(metrics.constraints / 10, 2);
+    const wordScore = Math.min(metrics.wordCount / 500, 2);
+    const rawScore = sectionScore + filePathScore + commandScore + constraintScore + wordScore;
+    return Math.round(rawScore * 10) / 10;
+}
+function generateRecommendations(scanResult, currentLevel, metrics) {
+    const recommendations = [];
+    // Level-based recommendations
+    if (currentLevel < 2) {
+        recommendations.push("Add a CLAUDE.md or .cursorrules file to provide basic AI instructions");
+    }
+    if (currentLevel < 3) {
+        recommendations.push("Create ARCHITECTURE.md to document your system design");
+        recommendations.push("Add CONVENTIONS.md to establish coding standards");
+    }
+    if (currentLevel < 4) {
+        recommendations.push("Set up .claude/commands/ for custom automation");
+        recommendations.push("Configure hooks for pre/post processing");
+    }
+    if (currentLevel < 5) {
+        recommendations.push("Create AGENTS.md to define multi-agent workflows");
+        recommendations.push("Add MCP configuration for external tool integration");
+    }
+    // Quality-based recommendations
+    if (metrics.sections < 5) {
+        recommendations.push("Add more sections to your documentation for better organization");
+    }
+    if (metrics.constraints < 5) {
+        recommendations.push("Include more explicit constraints (must/should/never) for clearer guidance");
+    }
+    if (metrics.wordCount < 200) {
+        recommendations.push("Expand your documentation with more detailed instructions");
+    }
+    // Tool coverage recommendations
+    if (!scanResult.toolsDetected.includes("Claude Code")) {
+        recommendations.push("Add CLAUDE.md for Claude Code support");
+    }
+    if (!scanResult.toolsDetected.includes("GitHub Copilot")) {
+        recommendations.push("Add .github/copilot-instructions.md for Copilot support");
+    }
+    if (!scanResult.toolsDetected.includes("Cursor")) {
+        recommendations.push("Add .cursorrules or .cursor/rules/ for Cursor support");
+    }
+    return recommendations.slice(0, 5); // Return top 5 recommendations
+}

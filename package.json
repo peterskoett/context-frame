@@ -1,0 +1,31 @@
+{
+  "name": "context-frame",
+  "version": "1.0.0",
+  "description": "Measure AI context maturity in your codebase",
+  "main": "dist/index.js",
+  "bin": {
+    "context-frame": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/cli.js",
+    "dev": "ts-node src/cli.ts"
+  },
+  "keywords": [
+    "ai",
+    "context",
+    "cli",
+    "developer-tools"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^11.1.0",
+    "glob": "^10.3.10"
+  }
+}
