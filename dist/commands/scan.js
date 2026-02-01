@@ -5,33 +5,61 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.scanCommand = scanCommand;
 const chalk_1 = __importDefault(require("chalk"));
+const chokidar_1 = __importDefault(require("chokidar"));
 const scanner_1 = require("../services/scanner");
 const scorer_1 = require("../services/scorer");
-async function scanCommand(targetPath, format = 'terminal') {
-    console.log(chalk_1.default.cyan('\n🔍 Scanning repository for AI context maturity...\n'));
-    try {
-        const scanResult = await (0, scanner_1.scanRepository)(targetPath);
-        const score = (0, scorer_1.calculateScore)(scanResult);
-        switch (format) {
-            case 'json':
-                printJsonReport(score, scanResult.basePath, scanResult);
-                break;
-            case 'markdown':
-                printMarkdownReport(score, scanResult.basePath, scanResult);
-                break;
-            case 'csv':
-                printCsvReport(score, scanResult.basePath, scanResult);
-                break;
-            case 'terminal':
-            default:
-                printTerminalReport(score, scanResult.basePath, scanResult);
-                break;
+async function scanCommand(targetPath, format = 'terminal', watch = false) {
+    const runScan = async () => {
+        console.log(chalk_1.default.cyan('\nðŸ” Scanning repository for AI context maturity...\n'));
+        try {
+            const scanResult = await (0, scanner_1.scanRepository)(targetPath);
+            const score = (0, scorer_1.calculateScore)(scanResult);
+            switch (format) {
+                case 'json':
+                    printJsonReport(score, scanResult.basePath, scanResult);
+                    break;
+                case 'markdown':
+                    printMarkdownReport(score, scanResult.basePath, scanResult);
+                    break;
+                case 'csv':
+                    printCsvReport(score, scanResult.basePath, scanResult);
+                    break;
+                case 'sarif':
+                    printSarifReport(score, scanResult.basePath, scanResult);
+                    break;
+                case 'terminal':
+                default:
+                    printTerminalReport(score, scanResult.basePath, scanResult);
+                    break;
+            }
         }
+        catch (error) {
+            console.error(chalk_1.default.red(`Error: ${error.message}`));
+            if (!watch) {
+                process.exit(1);
+            }
+        }
+    };
+    await runScan();
+    if (!watch) {
+        return;
     }
-    catch (error) {
-        console.error(chalk_1.default.red(`Error: ${error.message}`));
-        process.exit(1);
-    }
+    const watcher = chokidar_1.default.watch(targetPath, {
+        ignored: ['**/node_modules/**', '**/.git/**'],
+        ignoreInitial: true
+    });
+    let timer = null;
+    const schedule = () => {
+        if (timer) {
+            clearTimeout(timer);
+        }
+        timer = setTimeout(() => {
+            console.clear();
+            runScan().catch(() => { });
+        }, 200);
+    };
+    watcher.on('all', schedule);
+    await new Promise(() => { });
 }
 function printTerminalReport(score, basePath, scanResult) {
     // Header
@@ -163,6 +191,94 @@ function printCsvReport(score, basePath, scanResult) {
     ];
     console.log(headers.join(','));
     console.log(row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(','));
+}
+function printSarifReport(score, basePath, scanResult) {
+    const broken = scanResult.referenceValidation.brokenReferences;
+    const results = broken.map(issue => ({
+        ruleId: 'CF002',
+        level: 'warning',
+        message: {
+            text: `Broken reference: ${issue.reference}`
+        },
+        locations: [
+            {
+                physicalLocation: {
+                    artifactLocation: {
+                        uri: issue.sourceFile
+                    },
+                    region: {
+                        startLine: 1
+                    }
+                }
+            }
+        ],
+        properties: {
+            resolvedPath: issue.resolvedPath || null
+        }
+    }));
+    results.unshift({
+        ruleId: 'CF001',
+        level: 'note',
+        message: {
+            text: `Maturity level ${score.maturityLevel}: ${score.maturityName}. Quality ${score.qualityScore}/10 (weight ${score.totalWeight}).`
+        },
+        properties: {
+            maturityLevel: score.maturityLevel,
+            qualityScore: score.qualityScore,
+            totalWeight: score.totalWeight,
+            basePath
+        }
+    });
+    const sarif = {
+        $schema: 'https://json.schemastore.org/sarif-2.1.0.json',
+        version: '2.1.0',
+        runs: [
+            {
+                tool: {
+                    driver: {
+                        name: 'Context Frame',
+                        informationUri: 'https://github.com/peterskoett/context-frame',
+                        rules: [
+                            {
+                                id: 'CF001',
+                                name: 'context-maturity',
+                                shortDescription: {
+                                    text: 'Context maturity summary'
+                                },
+                                fullDescription: {
+                                    text: 'Summary of context maturity level and quality score.'
+                                },
+                                defaultConfiguration: {
+                                    level: 'note'
+                                }
+                            },
+                            {
+                                id: 'CF002',
+                                name: 'broken-reference',
+                                shortDescription: {
+                                    text: 'Broken documentation reference'
+                                },
+                                fullDescription: {
+                                    text: 'A documentation reference could not be resolved.'
+                                },
+                                defaultConfiguration: {
+                                    level: 'warning'
+                                }
+                            }
+                        ]
+                    }
+                },
+                invocations: [
+                    {
+                        executionSuccessful: true,
+                        endTimeUtc: new Date().toISOString()
+                    }
+                ],
+                results
+            }
+        ]
+    };
+    console.log(JSON.stringify(sarif, null, 2));
 }
 function buildReportData(score, basePath, scanResult) {
     const ref = scanResult.referenceValidation;

@@ -1,36 +1,73 @@
 import chalk from 'chalk';
+import chokidar from 'chokidar';
 import { scanRepository } from '../services/scanner';
 import { calculateScore, ScoreResult } from '../services/scorer';
 import { MATURITY_LEVELS } from '../models/levels';
 
-export type ScanFormat = 'terminal' | 'json' | 'markdown' | 'csv';
+export type ScanFormat = 'terminal' | 'json' | 'markdown' | 'csv' | 'sarif';
 
-export async function scanCommand(targetPath: string, format: ScanFormat = 'terminal'): Promise<void> {
-  console.log(chalk.cyan('\n🔍 Scanning repository for AI context maturity...\n'));
+export async function scanCommand(
+  targetPath: string,
+  format: ScanFormat = 'terminal',
+  watch = false
+): Promise<void> {
+  const runScan = async (): Promise<void> => {
+    console.log(chalk.cyan('\nðŸ” Scanning repository for AI context maturity...\n'));
 
-  try {
-    const scanResult = await scanRepository(targetPath);
-    const score = calculateScore(scanResult);
+    try {
+      const scanResult = await scanRepository(targetPath);
+      const score = calculateScore(scanResult);
 
-    switch (format) {
-      case 'json':
-        printJsonReport(score, scanResult.basePath, scanResult);
-        break;
-      case 'markdown':
-        printMarkdownReport(score, scanResult.basePath, scanResult);
-        break;
-      case 'csv':
-        printCsvReport(score, scanResult.basePath, scanResult);
-        break;
-      case 'terminal':
-      default:
-        printTerminalReport(score, scanResult.basePath, scanResult);
-        break;
+      switch (format) {
+        case 'json':
+          printJsonReport(score, scanResult.basePath, scanResult);
+          break;
+        case 'markdown':
+          printMarkdownReport(score, scanResult.basePath, scanResult);
+          break;
+        case 'csv':
+          printCsvReport(score, scanResult.basePath, scanResult);
+          break;
+        case 'sarif':
+          printSarifReport(score, scanResult.basePath, scanResult);
+          break;
+        case 'terminal':
+        default:
+          printTerminalReport(score, scanResult.basePath, scanResult);
+          break;
+      }
+    } catch (error) {
+      console.error(chalk.red(`Error: ${(error as Error).message}`));
+      if (!watch) {
+        process.exit(1);
+      }
     }
-  } catch (error) {
-    console.error(chalk.red(`Error: ${(error as Error).message}`));
-    process.exit(1);
+  };
+
+  await runScan();
+
+  if (!watch) {
+    return;
   }
+
+  const watcher = chokidar.watch(targetPath, {
+    ignored: ['**/node_modules/**', '**/.git/**'],
+    ignoreInitial: true
+  });
+
+  let timer: NodeJS.Timeout | null = null;
+  const schedule = (): void => {
+    if (timer) {
+      clearTimeout(timer);
+    }
+    timer = setTimeout(() => {
+      console.clear();
+      runScan().catch(() => {});
+    }, 200);
+  };
+
+  watcher.on('all', schedule);
+  await new Promise<void>(() => {});
 }
 
 function printTerminalReport(score: ScoreResult, basePath: string, scanResult: ReturnType<typeof scanRepository> extends Promise<infer T> ? T : never): void {
@@ -193,6 +230,102 @@ function printCsvReport(
   ];
   console.log(headers.join(','));
   console.log(row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(','));
+}
+
+function printSarifReport(
+  score: ScoreResult,
+  basePath: string,
+  scanResult: ReturnType<typeof scanRepository> extends Promise<infer T> ? T : never
+): void {
+  const broken = scanResult.referenceValidation.brokenReferences;
+  const results: any[] = broken.map(issue => ({
+    ruleId: 'CF002',
+    level: 'warning',
+    message: {
+      text: `Broken reference: ${issue.reference}`
+    },
+    locations: [
+      {
+        physicalLocation: {
+          artifactLocation: {
+            uri: issue.sourceFile
+          },
+          region: {
+            startLine: 1
+          }
+        }
+      }
+    ],
+    properties: {
+      resolvedPath: issue.resolvedPath || null
+    }
+  }));
+
+  results.unshift({
+    ruleId: 'CF001',
+    level: 'note',
+    message: {
+      text: `Maturity level ${score.maturityLevel}: ${score.maturityName}. Quality ${score.qualityScore}/10 (weight ${score.totalWeight}).`
+    },
+    properties: {
+      maturityLevel: score.maturityLevel,
+      qualityScore: score.qualityScore,
+      totalWeight: score.totalWeight,
+      basePath
+    }
+  });
+
+  const sarif = {
+    $schema: 'https://json.schemastore.org/sarif-2.1.0.json',
+    version: '2.1.0',
+    runs: [
+      {
+        tool: {
+          driver: {
+            name: 'Context Frame',
+            informationUri: 'https://github.com/peterskoett/context-frame',
+            rules: [
+              {
+                id: 'CF001',
+                name: 'context-maturity',
+                shortDescription: {
+                  text: 'Context maturity summary'
+                },
+                fullDescription: {
+                  text: 'Summary of context maturity level and quality score.'
+                },
+                defaultConfiguration: {
+                  level: 'note'
+                }
+              },
+              {
+                id: 'CF002',
+                name: 'broken-reference',
+                shortDescription: {
+                  text: 'Broken documentation reference'
+                },
+                fullDescription: {
+                  text: 'A documentation reference could not be resolved.'
+                },
+                defaultConfiguration: {
+                  level: 'warning'
+                }
+              }
+            ]
+          }
+        },
+        invocations: [
+          {
+            executionSuccessful: true,
+            endTimeUtc: new Date().toISOString()
+          }
+        ],
+        results
+      }
+    ]
+  };
+
+  console.log(JSON.stringify(sarif, null, 2));
 }
 
 function buildReportData(

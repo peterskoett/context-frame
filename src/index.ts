@@ -14,4 +14,4 @@ export type { FilePattern } from './models/patterns';
 
 export { loadConfig } from './services/config';
 export { scanOrg } from './services/org-scanner';
-export { startMcpServer } from './services/mcp-server';
+// MCP server is ESM-only; use dynamic import: await import('context-frame/services/mcp-server')

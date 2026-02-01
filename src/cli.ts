@@ -11,6 +11,8 @@ import { generateCommand } from './commands/generate';
 import { ciCommand } from './commands/ci';
 import { evalCommand, EvalFormat } from './commands/eval';
 import { prCommand } from './commands/pr';
+import { badgeCommand, BadgeStyle } from './commands/badge';
+import { diffCommand } from './commands/diff';
 
 const BANNER = [
   '   ___            _            _     _____                         ',
@@ -47,14 +49,15 @@ program
   .command('scan')
   .description('Scan repository for AI proficiency level')
   .argument('[path]', 'Path to repository', '.')
-  .option('-f, --format <format>', 'Output format: json, markdown, terminal, csv', 'terminal')
-  .action(async (targetPath: string, options: { format: string }) => {
+  .option('-f, --format <format>', 'Output format: json, markdown, terminal, csv, sarif', 'terminal')
+  .option('-w, --watch', 'Watch for file changes and rescan')
+  .action(async (targetPath: string, options: { format: string; watch?: boolean }) => {
     const format = options.format as ScanFormat;
-    if (!['json', 'markdown', 'terminal', 'csv'].includes(format)) {
-      console.error(`Invalid format: ${format}. Use json, markdown, terminal, or csv.`);
+    if (!['json', 'markdown', 'terminal', 'csv', 'sarif'].includes(format)) {
+      console.error(`Invalid format: ${format}. Use json, markdown, terminal, csv, or sarif.`);
       process.exit(1);
     }
-    await scanCommand(targetPath, format);
+    await scanCommand(targetPath, format, Boolean(options.watch));
   });
 
 program
@@ -83,6 +86,34 @@ program
       process.exit(1);
     }
     await reportCommand(targetPath, format);
+  });
+
+program
+  .command('badge')
+  .description('Generate a shields.io badge for the current maturity level')
+  .argument('[path]', 'Path to repository', '.')
+  .option('-s, --style <style>', 'Badge style: flat, plastic, for-the-badge', 'flat')
+  .action(async (targetPath: string, options: { style: string }) => {
+    const style = options.style as BadgeStyle;
+    if (!['flat', 'plastic', 'for-the-badge'].includes(style)) {
+      console.error(`Invalid style: ${style}. Use flat, plastic, or for-the-badge.`);
+      process.exit(1);
+    }
+    await badgeCommand(targetPath, style);
+  });
+
+program
+  .command('diff')
+  .description('Compare current scan results to a saved baseline JSON')
+  .argument('<baseline.json>', 'Path to baseline JSON file')
+  .argument('[path]', 'Path to repository', '.')
+  .action(async (baselinePath: string, targetPath: string) => {
+    try {
+      await diffCommand(baselinePath, targetPath);
+    } catch (error) {
+      console.error((error as Error).message);
+      process.exit(1);
+    }
   });
 
 program

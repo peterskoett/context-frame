@@ -3,6 +3,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio';
 import * as z from 'zod';
 import { scanRepository } from './scanner';
 import { calculateScore } from './scorer';
+import { FILE_PATTERNS } from '../models/patterns';
+import { MATURITY_LEVELS } from '../models/levels';
 
 export async function startMcpServer(): Promise<void> {
   const server = new McpServer({
@@ -73,6 +75,38 @@ export async function startMcpServer(): Promise<void> {
         ]
       };
     }
+  );
+
+  server.registerTool(
+    'list_patterns',
+    {
+      description: 'List context file patterns used for scanning.',
+      inputSchema: {}
+    },
+    async () => ({
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(FILE_PATTERNS, null, 2)
+        }
+      ]
+    })
+  );
+
+  server.registerTool(
+    'list_levels',
+    {
+      description: 'List maturity levels and their requirements.',
+      inputSchema: {}
+    },
+    async () => ({
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(MATURITY_LEVELS, null, 2)
+        }
+      ]
+    })
   );
 
   const transport = new StdioServerTransport();

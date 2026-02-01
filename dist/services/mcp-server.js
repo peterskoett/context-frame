@@ -39,6 +39,8 @@ const stdio_1 = require("@modelcontextprotocol/sdk/server/stdio");
 const z = __importStar(require("zod"));
 const scanner_1 = require("./scanner");
 const scorer_1 = require("./scorer");
+const patterns_1 = require("../models/patterns");
+const levels_1 = require("../models/levels");
 async function startMcpServer() {
     const server = new mcp_1.McpServer({
         name: 'context-frame',
@@ -94,6 +96,28 @@ async function startMcpServer() {
             ]
         };
     });
+    server.registerTool('list_patterns', {
+        description: 'List context file patterns used for scanning.',
+        inputSchema: {}
+    }, async () => ({
+        content: [
+            {
+                type: 'text',
+                text: JSON.stringify(patterns_1.FILE_PATTERNS, null, 2)
+            }
+        ]
+    }));
+    server.registerTool('list_levels', {
+        description: 'List maturity levels and their requirements.',
+        inputSchema: {}
+    }, async () => ({
+        content: [
+            {
+                type: 'text',
+                text: JSON.stringify(levels_1.MATURITY_LEVELS, null, 2)
+            }
+        ]
+    }));
     const transport = new stdio_1.StdioServerTransport();
     await server.connect(transport);
     console.log('Context Frame MCP server running on stdio.');

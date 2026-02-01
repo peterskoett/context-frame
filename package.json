@@ -33,14 +33,15 @@
     "README.md"
   ],
   "devDependencies": {
-    "@types/node": "^20.10.0",
     "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.10.0",
     "typescript": "^5.3.0"
   },
   "dependencies": {
     "@github/copilot-sdk": "^0.1.20",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "chalk": "^4.1.2",
+    "chokidar": "^3.6.0",
     "commander": "^11.1.0",
     "glob": "^10.3.10",
     "js-yaml": "^4.1.0",

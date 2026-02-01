@@ -8,4 +8,3 @@ export { FILE_PATTERNS, getPatternsByTool, getPatternsByLevel } from './models/p
 export type { FilePattern } from './models/patterns';
 export { loadConfig } from './services/config';
 export { scanOrg } from './services/org-scanner';
-export { startMcpServer } from './services/mcp-server';
