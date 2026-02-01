@@ -40,6 +40,7 @@
   "dependencies": {
     "@github/copilot-sdk": "^0.1.20",
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "@opentui/core": "^0.1.75",
     "chalk": "^4.1.2",
     "chokidar": "^3.6.0",
     "commander": "^11.1.0",

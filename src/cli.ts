@@ -13,6 +13,7 @@ import { evalCommand, EvalFormat } from './commands/eval';
 import { prCommand } from './commands/pr';
 import { badgeCommand, BadgeStyle } from './commands/badge';
 import { diffCommand } from './commands/diff';
+import { tuiCommand, listPatterns, listLevels } from './commands/tui';
 
 const BANNER = [
   '   ___            _            _     _____                         ',
@@ -167,6 +168,28 @@ program
   .description('Start Context Frame MCP server (stdio)')
   .action(async () => {
     await mcpCommand();
+  });
+
+program
+  .command('tui')
+  .description('Interactive TUI for browsing scan results')
+  .argument('[path]', 'Path to repository', '.')
+  .action(async (targetPath: string) => {
+    await tuiCommand(targetPath);
+  });
+
+program
+  .command('patterns')
+  .description('List all detection patterns')
+  .action(() => {
+    listPatterns();
+  });
+
+program
+  .command('levels')
+  .description('List all maturity levels')
+  .action(() => {
+    listLevels();
   });
 
 program

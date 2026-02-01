@@ -17,6 +17,7 @@ const eval_1 = require("./commands/eval");
 const pr_1 = require("./commands/pr");
 const badge_1 = require("./commands/badge");
 const diff_1 = require("./commands/diff");
+const tui_1 = require("./commands/tui");
 const BANNER = [
     '   ___            _            _     _____                         ',
     '  / __\\___  _ __ | |_ _____  _| |_  |  ___| __ __ _ _ __ ___   ___ ',
@@ -158,6 +159,25 @@ program
     .description('Start Context Frame MCP server (stdio)')
     .action(async () => {
     await (0, mcp_1.mcpCommand)();
+});
+program
+    .command('tui')
+    .description('Interactive TUI for browsing scan results')
+    .argument('[path]', 'Path to repository', '.')
+    .action(async (targetPath) => {
+    await (0, tui_1.tuiCommand)(targetPath);
+});
+program
+    .command('patterns')
+    .description('List all detection patterns')
+    .action(() => {
+    (0, tui_1.listPatterns)();
+});
+program
+    .command('levels')
+    .description('List all maturity levels')
+    .action(() => {
+    (0, tui_1.listLevels)();
 });
 program
     .command('improve')
