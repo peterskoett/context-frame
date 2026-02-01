@@ -44,6 +44,7 @@ context-frame report /path/to/repo --format markdown
 - **Claude Code**: CLAUDE.md, AGENTS.md, .claude/
 - **GitHub Copilot**: .github/copilot-instructions.md, .github/agents/
 - **Cursor**: .cursorrules, .cursor/rules/
+- **Goose**: HOWTOAI.md, .goosehints, .gooseignore
 - **OpenAI Codex**: CODEX.md, .codex/
 
 ## Quality Scoring
@@ -104,6 +105,8 @@ This project combines ideas from:
 - [measuring-ai-proficiency](https://github.com/pskoett/measuring-ai-proficiency) - 8-level maturity model
 - [Primer](https://github.com/pierceboggan/primer) - Sub-agent codebase analysis
 - [GitHub Copilot SDK](https://github.com/github/copilot-sdk) - Agentic workflows
+- [Advanced Context Engineering for Coding Agents (ACE-FCA)](https://github.com/humanlayer/advanced-context-engineering-for-coding-agents/blob/main/ace-fca.md) - Frequent intentional compaction, spec-driven development, large-context workflows
+- [Goose HOWTOAI](https://github.com/block/goose/blob/main/HOWTOAI.md) - Best practices for AI-assisted development, security, workflow tips
 
 ## License
 

@@ -83,6 +83,29 @@ export const FILE_PATTERNS: FilePattern[] = [
     level: 3
   },
 
+  // Goose patterns
+  {
+    name: "Goose Instructions",
+    tool: "Goose",
+    patterns: ["HOWTOAI.md"],
+    weight: 10,
+    level: 2
+  },
+  {
+    name: "Goose Hints",
+    tool: "Goose",
+    patterns: [".goosehints"],
+    weight: 8,
+    level: 2
+  },
+  {
+    name: "Goose Ignore",
+    tool: "Goose",
+    patterns: [".gooseignore"],
+    weight: 8,
+    level: 2
+  },
+
   // OpenAI Codex patterns
   {
     name: "Codex Instructions",
