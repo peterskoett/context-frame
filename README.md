@@ -111,6 +111,8 @@ This project combines ideas from:
 - [GitHub Copilot SDK](https://github.com/github/copilot-sdk) - Agentic workflows
 - [Advanced Context Engineering for Coding Agents (ACE-FCA)](https://github.com/humanlayer/advanced-context-engineering-for-coding-agents/blob/main/ace-fca.md) - Frequent intentional compaction, spec-driven development, large-context workflows
 - [Goose HOWTOAI](https://github.com/block/goose/blob/main/HOWTOAI.md) - Best practices for AI-assisted development, security, workflow tips
+- [AI-Assisted Development at Block](https://engineering.block.xyz/blog/ai-assisted-development-at-block) - Block's AI Champions program, RPI workflow, repo readiness patterns
+- [block/ai-rules](https://github.com/block/ai-rules) - CLI for generating AI context files across tools
 
 ## License
 
