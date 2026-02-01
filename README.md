@@ -90,6 +90,13 @@ RECOMMENDATIONS
 ═══════════════════════════════════════════════════════════════
 ```
 
+## Roadmap
+
+See [TODO.md](./TODO.md) for planned features including:
+- 🎨 **TUI Interface** via [OpenTUI](https://github.com/anomalyco/opentui)
+- GitHub Action for CI
+- VS Code extension
+
 ## Inspiration
 
 This project combines ideas from:
