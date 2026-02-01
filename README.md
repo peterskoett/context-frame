@@ -43,8 +43,12 @@ context-frame report /path/to/repo --format markdown
 
 - **Claude Code**: CLAUDE.md, AGENTS.md, .claude/
 - **GitHub Copilot**: .github/copilot-instructions.md, .github/agents/
-- **Cursor**: .cursorrules, .cursor/rules/
+- **Cursor**: .cursorrules, .cursor/rules/*.mdc
 - **Goose**: HOWTOAI.md, .goosehints, .gooseignore
+- **Cline**: .clinerules
+- **Firebender**: firebender.json
+- **AMP**: .amp/, amp.json
+- **AI Rules**: ai-rules/, .generated-ai-rules/ (block/ai-rules automation)
 - **OpenAI Codex**: CODEX.md, .codex/
 
 ## Quality Scoring

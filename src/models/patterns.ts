@@ -106,6 +106,63 @@ export const FILE_PATTERNS: FilePattern[] = [
     level: 2
   },
 
+  // Cline patterns
+  {
+    name: "Cline Rules",
+    tool: "Cline",
+    patterns: [".clinerules"],
+    weight: 10,
+    level: 2
+  },
+
+  // Firebender patterns
+  {
+    name: "Firebender Config",
+    tool: "Firebender",
+    patterns: ["firebender.json"],
+    weight: 10,
+    level: 2
+  },
+
+  // AI Rules (block/ai-rules) patterns
+  {
+    name: "AI Rules Directory",
+    tool: "AI Rules",
+    patterns: ["ai-rules/", "ai-rules/index.md"],
+    weight: 15,
+    level: 4
+  },
+  {
+    name: "AI Rules Framework",
+    tool: "AI Rules",
+    patterns: ["ai-rules/framework-overview.md"],
+    weight: 10,
+    level: 3
+  },
+  {
+    name: "AI Usage Tracking",
+    tool: "AI Rules",
+    patterns: ["ai-rules/ai-usage-tracking.md"],
+    weight: 8,
+    level: 4
+  },
+  {
+    name: "Generated AI Rules",
+    tool: "AI Rules",
+    patterns: [".generated-ai-rules/", "@ai-rules/"],
+    weight: 12,
+    level: 5
+  },
+
+  // AMP patterns
+  {
+    name: "AMP Config",
+    tool: "AMP",
+    patterns: [".amp/", "amp.json"],
+    weight: 10,
+    level: 3
+  },
+
   // OpenAI Codex patterns
   {
     name: "Codex Instructions",
