@@ -24,7 +24,32 @@ context-frame report /path/to/repo --format json
 
 # Generate markdown report
 context-frame report /path/to/repo --format markdown
+
+# Launch interactive TUI
+context-frame tui /path/to/repo
 ```
+
+## TUI (Interactive Browser)
+
+Use the TUI to browse detected context files with keyboard navigation and live filters.
+
+```
+context-frame tui [path]
+```
+
+Features:
+- Colorized header/status when running in a TTY.
+- Help screen (`?` or `h`) with key bindings.
+- Search/filter (`/`) across path, tool, and pattern name.
+- Sorting (`s`) by path, tool, weight, or level.
+
+Key bindings:
+- Arrows: move selection
+- Enter: file details
+- /: filter
+- s: cycle sort order
+- h or ?: help screen
+- q or Esc: quit
 
 ## Maturity Levels
 
@@ -109,7 +134,6 @@ RECOMMENDATIONS
 ## Roadmap
 
 See [TODO.md](./TODO.md) for planned features including:
-- **TUI Interface** via [OpenTUI](https://github.com/anomalyco/opentui)
 - GitHub Action for CI
 - VS Code extension
 
