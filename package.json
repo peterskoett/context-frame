@@ -24,6 +24,7 @@
     "typescript": "^5.3.0"
   },
   "dependencies": {
+    "@github/copilot-sdk": "^0.1.20",
     "chalk": "^4.1.2",
     "commander": "^11.1.0",
     "glob": "^10.3.10"
