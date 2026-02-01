@@ -1,6 +1,6 @@
 {
   "name": "context-frame",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Measure AI context maturity in your codebase",
   "main": "dist/index.js",
   "bin": {
@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "prepublishOnly": "npm run build",
     "start": "node dist/cli.js",
     "dev": "ts-node src/cli.ts"
   },
@@ -19,14 +20,31 @@
   ],
   "author": "",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/peterskoett/context-frame.git"
+  },
+  "homepage": "https://github.com/peterskoett/context-frame",
+  "bugs": {
+    "url": "https://github.com/peterskoett/context-frame/issues"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "devDependencies": {
     "@types/node": "^20.10.0",
+    "@types/js-yaml": "^4.0.9",
     "typescript": "^5.3.0"
   },
   "dependencies": {
     "@github/copilot-sdk": "^0.1.20",
+    "@modelcontextprotocol/sdk": "^1.0.0",
     "chalk": "^4.1.2",
     "commander": "^11.1.0",
-    "glob": "^10.3.10"
+    "glob": "^10.3.10",
+    "js-yaml": "^4.1.0",
+    "minimatch": "^9.0.3",
+    "zod": "^4.3.5"
   }
 }

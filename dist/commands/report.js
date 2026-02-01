@@ -1,37 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -41,22 +8,21 @@ const chalk_1 = __importDefault(require("chalk"));
 const scanner_1 = require("../services/scanner");
 const scorer_1 = require("../services/scorer");
 const levels_1 = require("../models/levels");
+const scan_1 = require("./scan");
 async function reportCommand(targetPath, format) {
     try {
         const scanResult = await (0, scanner_1.scanRepository)(targetPath);
         const score = (0, scorer_1.calculateScore)(scanResult);
         switch (format) {
             case 'json':
-                printJsonReport(score, scanResult.basePath);
+                printJsonReport(score, scanResult);
                 break;
             case 'markdown':
-                printMarkdownReport(score, scanResult.basePath);
+                printMarkdownReport(score, scanResult);
                 break;
             case 'terminal':
             default:
-                // Reuse scan command's terminal output
-                const { scanCommand } = await Promise.resolve().then(() => __importStar(require('./scan')));
-                await scanCommand(targetPath);
+                await (0, scan_1.scanCommand)(targetPath, format);
                 break;
         }
     }
@@ -65,9 +31,9 @@ async function reportCommand(targetPath, format) {
         process.exit(1);
     }
 }
-function printJsonReport(score, basePath) {
+function printJsonReport(score, scanResult) {
     const report = {
-        repository: basePath,
+        repository: scanResult.basePath,
         timestamp: new Date().toISOString(),
         maturity: {
             level: score.maturityLevel,
@@ -77,10 +43,13 @@ function printJsonReport(score, basePath) {
         quality: {
             score: score.qualityScore,
             maxScore: 10,
-            weight: score.totalWeight
+            weight: score.totalWeight,
+            commitBonus: score.commitBonus
         },
         metrics: score.qualityMetrics,
         tools: score.toolBreakdown,
+        references: scanResult.referenceValidation,
+        commits: scanResult.commitCounts,
         recommendations: score.recommendations,
         levels: levels_1.MATURITY_LEVELS.map(l => ({
             level: l.level,
@@ -90,10 +59,10 @@ function printJsonReport(score, basePath) {
     };
     console.log(JSON.stringify(report, null, 2));
 }
-function printMarkdownReport(score, basePath) {
+function printMarkdownReport(score, scanResult) {
     const lines = [];
     lines.push('# Context Frame Report\n');
-    lines.push(`**Repository:** \`${basePath}\`\n`);
+    lines.push(`**Repository:** \`${scanResult.basePath}\`\n`);
     lines.push(`**Generated:** ${new Date().toISOString()}\n`);
     // Maturity Level
     lines.push('## Maturity Level\n');
@@ -111,6 +80,7 @@ function printMarkdownReport(score, basePath) {
     lines.push('## Quality Score\n');
     lines.push(`**Score:** ${score.qualityScore}/10\n`);
     lines.push(`**Total Weight:** ${score.totalWeight}\n`);
+    lines.push(`**Commit Bonus:** ${score.commitBonus}\n`);
     // Progress bar in markdown
     const filled = Math.round(score.qualityScore);
     const bar = '█'.repeat(filled) + '░'.repeat(10 - filled);
@@ -146,6 +116,15 @@ function printMarkdownReport(score, basePath) {
         lines.push('## Recommendations\n');
         for (const rec of score.recommendations) {
             lines.push(`- ${rec}`);
+        }
+        lines.push('');
+    }
+    lines.push('## Reference Validation\n');
+    lines.push(`Resolved: ${scanResult.referenceValidation.resolvedReferences}/${scanResult.referenceValidation.totalReferences} (${Math.round(scanResult.referenceValidation.resolutionRate * 100)}%)\n`);
+    if (scanResult.referenceValidation.brokenReferences.length > 0) {
+        lines.push('Broken References:');
+        for (const broken of scanResult.referenceValidation.brokenReferences.slice(0, 10)) {
+            lines.push(`- ${broken.sourceFile} -> ${broken.reference}`);
         }
         lines.push('');
     }

@@ -2,8 +2,9 @@ import chalk from 'chalk';
 import { scanRepository } from '../services/scanner';
 import { calculateScore, ScoreResult } from '../services/scorer';
 import { MATURITY_LEVELS } from '../models/levels';
+import { scanCommand, ScanFormat } from './scan';
 
-export type ReportFormat = 'json' | 'markdown' | 'terminal';
+export type ReportFormat = 'json' | 'markdown' | 'terminal' | 'csv';
 
 export async function reportCommand(
   targetPath: string,
@@ -15,16 +16,14 @@ export async function reportCommand(
 
     switch (format) {
       case 'json':
-        printJsonReport(score, scanResult.basePath);
+        printJsonReport(score, scanResult);
         break;
       case 'markdown':
-        printMarkdownReport(score, scanResult.basePath);
+        printMarkdownReport(score, scanResult);
         break;
       case 'terminal':
       default:
-        // Reuse scan command's terminal output
-        const { scanCommand } = await import('./scan');
-        await scanCommand(targetPath);
+        await scanCommand(targetPath, format as ScanFormat);
         break;
     }
   } catch (error) {
@@ -33,9 +32,9 @@ export async function reportCommand(
   }
 }
 
-function printJsonReport(score: ScoreResult, basePath: string): void {
+function printJsonReport(score: ScoreResult, scanResult: Awaited<ReturnType<typeof scanRepository>>): void {
   const report = {
-    repository: basePath,
+    repository: scanResult.basePath,
     timestamp: new Date().toISOString(),
     maturity: {
       level: score.maturityLevel,
@@ -45,10 +44,13 @@ function printJsonReport(score: ScoreResult, basePath: string): void {
     quality: {
       score: score.qualityScore,
       maxScore: 10,
-      weight: score.totalWeight
+      weight: score.totalWeight,
+      commitBonus: score.commitBonus
     },
     metrics: score.qualityMetrics,
     tools: score.toolBreakdown,
+    references: scanResult.referenceValidation,
+    commits: scanResult.commitCounts,
     recommendations: score.recommendations,
     levels: MATURITY_LEVELS.map(l => ({
       level: l.level,
@@ -60,11 +62,11 @@ function printJsonReport(score: ScoreResult, basePath: string): void {
   console.log(JSON.stringify(report, null, 2));
 }
 
-function printMarkdownReport(score: ScoreResult, basePath: string): void {
+function printMarkdownReport(score: ScoreResult, scanResult: Awaited<ReturnType<typeof scanRepository>>): void {
   const lines: string[] = [];
 
   lines.push('# Context Frame Report\n');
-  lines.push(`**Repository:** \`${basePath}\`\n`);
+  lines.push(`**Repository:** \`${scanResult.basePath}\`\n`);
   lines.push(`**Generated:** ${new Date().toISOString()}\n`);
 
   // Maturity Level
@@ -85,6 +87,7 @@ function printMarkdownReport(score: ScoreResult, basePath: string): void {
   lines.push('## Quality Score\n');
   lines.push(`**Score:** ${score.qualityScore}/10\n`);
   lines.push(`**Total Weight:** ${score.totalWeight}\n`);
+  lines.push(`**Commit Bonus:** ${score.commitBonus}\n`);
 
   // Progress bar in markdown
   const filled = Math.round(score.qualityScore);
@@ -123,6 +126,16 @@ function printMarkdownReport(score: ScoreResult, basePath: string): void {
     lines.push('## Recommendations\n');
     for (const rec of score.recommendations) {
       lines.push(`- ${rec}`);
+    }
+    lines.push('');
+  }
+
+  lines.push('## Reference Validation\n');
+  lines.push(`Resolved: ${scanResult.referenceValidation.resolvedReferences}/${scanResult.referenceValidation.totalReferences} (${Math.round(scanResult.referenceValidation.resolutionRate * 100)}%)\n`);
+  if (scanResult.referenceValidation.brokenReferences.length > 0) {
+    lines.push('Broken References:');
+    for (const broken of scanResult.referenceValidation.brokenReferences.slice(0, 10)) {
+      lines.push(`- ${broken.sourceFile} -> ${broken.reference}`);
     }
     lines.push('');
   }

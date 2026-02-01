@@ -3,21 +3,37 @@ import { scanRepository } from '../services/scanner';
 import { calculateScore, ScoreResult } from '../services/scorer';
 import { MATURITY_LEVELS } from '../models/levels';
 
-export async function scanCommand(targetPath: string): Promise<void> {
+export type ScanFormat = 'terminal' | 'json' | 'markdown' | 'csv';
+
+export async function scanCommand(targetPath: string, format: ScanFormat = 'terminal'): Promise<void> {
   console.log(chalk.cyan('\n🔍 Scanning repository for AI context maturity...\n'));
 
   try {
     const scanResult = await scanRepository(targetPath);
     const score = calculateScore(scanResult);
 
-    printTerminalReport(score, scanResult.basePath);
+    switch (format) {
+      case 'json':
+        printJsonReport(score, scanResult.basePath, scanResult);
+        break;
+      case 'markdown':
+        printMarkdownReport(score, scanResult.basePath, scanResult);
+        break;
+      case 'csv':
+        printCsvReport(score, scanResult.basePath, scanResult);
+        break;
+      case 'terminal':
+      default:
+        printTerminalReport(score, scanResult.basePath, scanResult);
+        break;
+    }
   } catch (error) {
     console.error(chalk.red(`Error: ${(error as Error).message}`));
     process.exit(1);
   }
 }
 
-function printTerminalReport(score: ScoreResult, basePath: string): void {
+function printTerminalReport(score: ScoreResult, basePath: string, scanResult: ReturnType<typeof scanRepository> extends Promise<infer T> ? T : never): void {
   // Header
   console.log(chalk.bold.white('═══════════════════════════════════════════════════════════════'));
   console.log(chalk.bold.cyan('                    CONTEXT FRAME REPORT'));
@@ -49,6 +65,9 @@ function printTerminalReport(score: ScoreResult, basePath: string): void {
   console.log(chalk.gray(`  Commands:    ${score.qualityMetrics.commands}`));
   console.log(chalk.gray(`  Constraints: ${score.qualityMetrics.constraints}`));
   console.log(chalk.gray(`  Word Count:  ${score.qualityMetrics.wordCount}`));
+  if (score.commitBonus > 0) {
+    console.log(chalk.gray(`  Commit Bonus: +${score.commitBonus.toFixed(1)}`));
+  }
 
   // Tool Breakdown
   console.log(chalk.bold.white('\nTOOL COVERAGE'));
@@ -72,7 +91,142 @@ function printTerminalReport(score: ScoreResult, basePath: string): void {
     }
   }
 
+  // Reference validation
+  console.log(chalk.bold.white('\nREFERENCE VALIDATION'));
+  const ref = scanResult.referenceValidation;
+  const resolvedColor = ref.resolutionRate >= 0.9 ? chalk.green : ref.resolutionRate >= 0.7 ? chalk.yellow : chalk.red;
+  console.log(resolvedColor(`  ${ref.resolvedReferences}/${ref.totalReferences} refs resolved (${Math.round(ref.resolutionRate * 100)}%)`));
+  if (ref.brokenReferences.length > 0) {
+    console.log(chalk.gray(`  Broken refs: ${ref.brokenReferences.length}`));
+  }
+
+  // Commit history
+  console.log(chalk.bold.white('\nCONTEXT FILE HISTORY'));
+  const commitCounts = scanResult.commitCounts;
+  const trackedFiles = Object.keys(commitCounts);
+  const bonusFiles = trackedFiles.filter(file => commitCounts[file] >= 5).length;
+  console.log(chalk.gray(`  Files tracked: ${trackedFiles.length}`));
+  console.log(chalk.gray(`  Files with 5+ commits: ${bonusFiles}`));
+  const topFiles = trackedFiles
+    .map(file => ({ file, count: commitCounts[file] }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+  if (topFiles.length > 0) {
+    console.log(chalk.gray('  Top files:'));
+    for (const entry of topFiles) {
+      console.log(chalk.gray(`    - ${entry.file}: ${entry.count} commits`));
+    }
+  }
+
   console.log(chalk.bold.white('\n═══════════════════════════════════════════════════════════════\n'));
+}
+
+function printJsonReport(
+  score: ScoreResult,
+  basePath: string,
+  scanResult: ReturnType<typeof scanRepository> extends Promise<infer T> ? T : never
+): void {
+  const report = buildReportData(score, basePath, scanResult);
+  console.log(JSON.stringify(report, null, 2));
+}
+
+function printMarkdownReport(
+  score: ScoreResult,
+  basePath: string,
+  scanResult: ReturnType<typeof scanRepository> extends Promise<infer T> ? T : never
+): void {
+  const report = buildReportData(score, basePath, scanResult);
+  const lines: string[] = [];
+
+  lines.push('# Context Frame Report\n');
+  lines.push(`**Repository:** \`${report.repository}\`\n`);
+  lines.push(`**Generated:** ${report.timestamp}\n`);
+  lines.push(`**Level:** ${report.maturity.level} - ${report.maturity.name}\n`);
+  lines.push(`**Quality:** ${report.quality.score}/10 (bonus: +${report.quality.commitBonus})\n`);
+
+  lines.push('## Reference Validation\n');
+  lines.push(`Resolved: ${report.references.resolved}/${report.references.total} (${Math.round(report.references.rate * 100)}%)\n`);
+  if (report.references.broken.length > 0) {
+    lines.push('Broken references:');
+    for (const broken of report.references.broken.slice(0, 10)) {
+      lines.push(`- ${broken.sourceFile} -> ${broken.reference}`);
+    }
+    lines.push('');
+  }
+
+  lines.push('## Commit History\n');
+  lines.push(`Files tracked: ${report.commits.files}\n`);
+  lines.push(`Files with 5+ commits: ${report.commits.filesWithFivePlus}\n`);
+
+  console.log(lines.join('\n'));
+}
+
+function printCsvReport(
+  score: ScoreResult,
+  basePath: string,
+  scanResult: ReturnType<typeof scanRepository> extends Promise<infer T> ? T : never
+): void {
+  const report = buildReportData(score, basePath, scanResult);
+  const headers = [
+    'repository',
+    'timestamp',
+    'level',
+    'quality_score',
+    'commit_bonus',
+    'refs_total',
+    'refs_resolved',
+    'refs_rate',
+    'context_files',
+    'context_files_5plus'
+  ];
+  const row = [
+    report.repository,
+    report.timestamp,
+    report.maturity.level,
+    report.quality.score,
+    report.quality.commitBonus,
+    report.references.total,
+    report.references.resolved,
+    report.references.rate.toFixed(2),
+    report.commits.files,
+    report.commits.filesWithFivePlus
+  ];
+  console.log(headers.join(','));
+  console.log(row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(','));
+}
+
+function buildReportData(
+  score: ScoreResult,
+  basePath: string,
+  scanResult: ReturnType<typeof scanRepository> extends Promise<infer T> ? T : never
+) {
+  const ref = scanResult.referenceValidation;
+  const commitCounts = scanResult.commitCounts;
+  const filesWithFivePlus = Object.values(commitCounts).filter(count => count >= 5).length;
+  return {
+    repository: basePath,
+    timestamp: new Date().toISOString(),
+    maturity: {
+      level: score.maturityLevel,
+      name: score.maturityName,
+      description: score.maturityDescription
+    },
+    quality: {
+      score: score.qualityScore,
+      commitBonus: score.commitBonus
+    },
+    references: {
+      total: ref.totalReferences,
+      resolved: ref.resolvedReferences,
+      rate: ref.resolutionRate,
+      broken: ref.brokenReferences
+    },
+    commits: {
+      files: Object.keys(commitCounts).length,
+      filesWithFivePlus,
+      counts: commitCounts
+    }
+  };
 }
 
 function printLevelBar(level: number): void {

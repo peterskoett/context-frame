@@ -15,6 +15,7 @@ export interface ScoreResult {
   maturityName: string;
   maturityDescription: string;
   qualityScore: number;
+  commitBonus: number;
   totalWeight: number;
   toolBreakdown: Record<string, { files: string[]; weight: number }>;
   qualityMetrics: QualityMetrics;
@@ -53,8 +54,7 @@ export function calculateScore(scanResult: ScanResult): ScoreResult {
 
     // Analyze content quality for markdown files
     if (detected.path.endsWith('.md')) {
-      const fullPath = path.join(scanResult.basePath, detected.path);
-      const metrics = analyzeFileContent(fullPath);
+      const metrics = detected.metrics ?? analyzeFileContent(path.join(scanResult.basePath, detected.path));
       qualityMetrics.sections += metrics.sections;
       qualityMetrics.filePaths += metrics.filePaths;
       qualityMetrics.commands += metrics.commands;
@@ -75,7 +75,8 @@ export function calculateScore(scanResult: ScanResult): ScoreResult {
   }
 
   // Calculate quality score (0-10)
-  const qualityScore = calculateQualityScore(qualityMetrics, totalWeight);
+  const commitBonus = calculateCommitBonus(scanResult.commitCounts);
+  const qualityScore = calculateQualityScore(qualityMetrics, totalWeight, commitBonus);
 
   // Generate recommendations
   const recommendations = generateRecommendations(scanResult, maxLevelReached, qualityMetrics);
@@ -87,6 +88,7 @@ export function calculateScore(scanResult: ScanResult): ScoreResult {
     maturityName: level.name,
     maturityDescription: level.description,
     qualityScore,
+    commitBonus,
     totalWeight,
     toolBreakdown,
     qualityMetrics,
@@ -94,7 +96,7 @@ export function calculateScore(scanResult: ScanResult): ScoreResult {
   };
 }
 
-function calculateQualityScore(metrics: QualityMetrics, totalWeight: number): number {
+function calculateQualityScore(metrics: QualityMetrics, totalWeight: number, commitBonus: number): number {
   // Score components (each 0-2 points, total 10)
   const sectionScore = Math.min(metrics.sections / 5, 2);
   const filePathScore = Math.min(metrics.filePaths / 10, 2);
@@ -102,8 +104,9 @@ function calculateQualityScore(metrics: QualityMetrics, totalWeight: number): nu
   const constraintScore = Math.min(metrics.constraints / 10, 2);
   const wordScore = Math.min(metrics.wordCount / 500, 2);
 
-  const rawScore = sectionScore + filePathScore + commandScore + constraintScore + wordScore;
-  return Math.round(rawScore * 10) / 10;
+  const rawScore = sectionScore + filePathScore + commandScore + constraintScore + wordScore + commitBonus;
+  const capped = Math.min(10, rawScore);
+  return Math.round(capped * 10) / 10;
 }
 
 function generateRecommendations(
@@ -159,5 +162,18 @@ function generateRecommendations(
     recommendations.push("Add .cursorrules or .cursor/rules/ for Cursor support");
   }
 
+  if (scanResult.referenceValidation.totalReferences > 0 && scanResult.referenceValidation.resolutionRate < 0.9) {
+    recommendations.push("Fix broken documentation file references");
+  }
+
   return recommendations.slice(0, 5); // Return top 5 recommendations
+}
+
+function calculateCommitBonus(commitCounts: Record<string, number>): number {
+  const filesWithHistory = Object.values(commitCounts).filter(count => count >= 5).length;
+  if (filesWithHistory === 0) {
+    return 0;
+  }
+  const bonus = Math.min(filesWithHistory * 0.2, 1);
+  return Math.round(bonus * 10) / 10;
 }

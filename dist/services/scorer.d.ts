@@ -11,6 +11,7 @@ export interface ScoreResult {
     maturityName: string;
     maturityDescription: string;
     qualityScore: number;
+    commitBonus: number;
     totalWeight: number;
     toolBreakdown: Record<string, {
         files: string[];
