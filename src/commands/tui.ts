@@ -1,133 +1,193 @@
-import chalk from 'chalk';
+import readline from 'readline';
 import { scanRepository, DetectedFile } from '../services/scanner';
-import { calculateScore, ScoreResult } from '../services/scorer';
-import { MATURITY_LEVELS } from '../models/levels';
+import { calculateScore } from '../services/scorer';
 import { FILE_PATTERNS } from '../models/patterns';
+import { MATURITY_LEVELS } from '../models/levels';
 
-// ASCII art header
-const HEADER = `
-╔═══════════════════════════════════════════════════════════════╗
-║                                                               ║
-║   ██████╗ ██████╗ ███╗   ██╗████████╗███████╗██╗  ██╗████████╗║
-║  ██╔════╝██╔═══██╗████╗  ██║╚══██╔══╝██╔════╝╚██╗██╔╝╚══██╔══╝║
-║  ██║     ██║   ██║██╔██╗ ██║   ██║   █████╗   ╚███╔╝    ██║   ║
-║  ██║     ██║   ██║██║╚██╗██║   ██║   ██╔══╝   ██╔██╗    ██║   ║
-║  ╚██████╗╚██████╔╝██║ ╚████║   ██║   ███████╗██╔╝ ██╗   ██║   ║
-║   ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚═╝  ╚═╝   ╚═╝   ║
-║                                                               ║
-║   ███████╗██████╗  █████╗ ███╗   ███╗███████╗                 ║
-║   ██╔════╝██╔══██╗██╔══██╗████╗ ████║██╔════╝                 ║
-║   █████╗  ██████╔╝███████║██╔████╔██║█████╗                   ║
-║   ██╔══╝  ██╔══██╗██╔══██║██║╚██╔╝██║██╔══╝                   ║
-║   ██║     ██║  ██║██║  ██║██║ ╚═╝ ██║███████╗                 ║
-║   ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝                 ║
-║                                                               ║
-║             AI Context Maturity Scanner                       ║
-╚═══════════════════════════════════════════════════════════════╝
-`;
+const LOGO = [
+  '  ____            _            _     _____                         ',
+  ' / ___|___  _ __ | |_ _____  _| |_  |  ___| __ __ _ _ __ ___   ___ ',
+  "| |   / _ \\| '_ \\| __/ _ \\ \\/ / __| | |_ | '__/ _` | '_ ` _ \\ / _ \\",
+  '| |__| (_) | | | | ||  __/>  <| |_  |  _|| | | (_| | | | | | |  __/',
+  ' \\____\\___/|_| |_|\\__\\___/_/\\_\\\\__| |_|  |_|  \\__,_|_| |_| |_|\\___|'
+].join('\n');
 
-interface FileInfo {
-  path: string;
-  tool: string;
-  weight: number;
-  quality: number;
-}
+type Key = 'up' | 'down' | 'enter' | 'quit' | 'unknown';
 
 export async function tuiCommand(targetPath: string): Promise<void> {
-  // For now, use fallback display - OpenTUI integration coming soon
-  // The full interactive TUI requires more OpenTUI API research
-  await fallbackDisplay(targetPath);
-}
-
-// Fallback display with nice formatting
-async function fallbackDisplay(targetPath: string): Promise<void> {
-  console.log(chalk.cyan(HEADER));
-  
-  console.log(chalk.cyan('Scanning repository...\n'));
-  
   const scanResult = await scanRepository(targetPath);
   const score = calculateScore(scanResult);
-  
-  // Extract file info
-  const files: FileInfo[] = scanResult.detectedFiles.map((f: DetectedFile) => ({
-    path: f.path,
-    tool: f.pattern.tool,
-    weight: f.pattern.weight,
-    quality: f.metrics ? calculateQualityFromMetrics(f.metrics) : 0
-  }));
-  
-  // Level display
-  const level = MATURITY_LEVELS[score.maturityLevel - 1];
-  console.log(chalk.bold.white('MATURITY LEVEL'));
-  console.log(chalk.cyan(`  Level ${score.maturityLevel}: ${level?.name || 'Unknown'}`));
-  console.log(chalk.gray(`  ${level?.description || ''}`));
-  const levelBar = '█'.repeat(score.maturityLevel) + '░'.repeat(8 - score.maturityLevel);
-  console.log(chalk.cyan(`  [${levelBar}] ${score.maturityLevel}/8\n`));
-  
-  // Quality display
-  console.log(chalk.bold.white('QUALITY SCORE'));
-  const qualityBar = '█'.repeat(Math.round(score.qualityScore)) + '░'.repeat(10 - Math.round(score.qualityScore));
-  console.log(chalk.green(`  [${qualityBar}] ${score.qualityScore.toFixed(1)}/10\n`));
-  
-  // Files display
-  console.log(chalk.bold.white('DETECTED FILES'));
-  for (const file of files) {
-    const qBar = '█'.repeat(Math.round(file.quality)) + '░'.repeat(10 - Math.round(file.quality));
-    console.log(chalk.white(`  ${file.path}`));
-    console.log(chalk.gray(`    ${file.tool} | Weight: ${file.weight} | Quality: [${qBar}] ${file.quality.toFixed(1)}`));
+  const files = scanResult.detectedFiles.slice().sort((a, b) => a.path.localeCompare(b.path));
+
+  let selectedIndex = 0;
+  let scrollOffset = 0;
+  const footer = 'Arrow keys: navigate  Enter: details  q: quit';
+
+  const stdin = process.stdin;
+  const stdout = process.stdout;
+
+  readline.emitKeypressEvents(stdin);
+  if (stdin.isTTY) {
+    stdin.setRawMode(true);
   }
-  
-  // Tool coverage summary
-  console.log(chalk.bold.white('\nTOOL COVERAGE'));
-  for (const [tool, data] of Object.entries(score.toolBreakdown)) {
-    console.log(chalk.gray(`  ${tool}: ${data.files.length} file(s), weight ${data.weight}`));
-  }
-  
-  // Recommendations
-  if (score.recommendations.length > 0) {
-    console.log(chalk.bold.white('\nRECOMMENDATIONS'));
-    for (const rec of score.recommendations) {
-      console.log(chalk.yellow(`  → ${rec}`));
+
+  const render = (): void => {
+    const width = stdout.columns || 80;
+    const height = stdout.rows || 24;
+    const headerLines = 9;
+    const footerLines = 2;
+    const listHeight = Math.max(3, height - headerLines - footerLines);
+
+    if (selectedIndex < scrollOffset) {
+      scrollOffset = selectedIndex;
+    } else if (selectedIndex >= scrollOffset + listHeight) {
+      scrollOffset = selectedIndex - listHeight + 1;
     }
-  }
-  
-  console.log(chalk.cyan('\n' + '─'.repeat(60)));
-  console.log(chalk.gray('\nTip: Full interactive TUI with OpenTUI coming soon!\n'));
+
+    const visible = files.slice(scrollOffset, scrollOffset + listHeight);
+    const statusLine = `Level ${score.maturityLevel} (${score.maturityName}) | Quality ${score.qualityScore}/10 | Files ${files.length}`;
+
+    stdout.write('\x1b[2J\x1b[H');
+    stdout.write(`${LOGO}\n`);
+    stdout.write(`${statusLine}\n`);
+    stdout.write(`${'-'.repeat(Math.min(width, statusLine.length))}\n`);
+
+    if (files.length === 0) {
+      stdout.write('No context files detected.\n');
+    } else {
+      for (let i = 0; i < visible.length; i++) {
+        const fileIndex = scrollOffset + i;
+        const prefix = fileIndex === selectedIndex ? '>' : ' ';
+        const label = `${prefix} ${visible[i].path}`;
+        stdout.write(label.slice(0, width) + '\n');
+      }
+    }
+
+    stdout.write('\n');
+    stdout.write(footer.slice(0, width) + '\n');
+  };
+
+  const showDetails = (file: DetectedFile): void => {
+    const lines: string[] = [];
+    lines.push(`Path: ${file.path}`);
+    lines.push(`Tool: ${file.pattern.tool}`);
+    lines.push(`Pattern: ${file.pattern.name}`);
+    lines.push(`Weight: ${file.pattern.weight}`);
+    lines.push(`Level: ${file.pattern.level}`);
+    if (file.size !== undefined) {
+      lines.push(`Size: ${file.size} bytes`);
+    }
+    if (file.wordCount !== undefined) {
+      lines.push(`Word count: ${file.wordCount}`);
+    }
+    if (file.metrics) {
+      lines.push(`Sections: ${file.metrics.sections}`);
+      lines.push(`File paths: ${file.metrics.filePaths}`);
+      lines.push(`Commands: ${file.metrics.commands}`);
+      lines.push(`Constraints: ${file.metrics.constraints}`);
+      lines.push(`Words: ${file.metrics.wordCount}`);
+    }
+    const content = lines.join('\n');
+    stdout.write('\x1b[2J\x1b[H');
+    stdout.write(`${LOGO}\n`);
+    stdout.write('File Details\n');
+    stdout.write('-----------\n');
+    stdout.write(content + '\n\n');
+    stdout.write('Press any key to return.\n');
+  };
+
+  let mode: 'list' | 'details' = 'list';
+
+  const readKey = (chunk: Buffer): Key => {
+    const input = chunk.toString('utf8');
+    if (input === '\u0003' || input === 'q' || input === 'Q' || input === '\u001b') {
+      return 'quit';
+    }
+    if (input === '\r' || input === '\n') {
+      return 'enter';
+    }
+    if (input === '\u001b[A') {
+      return 'up';
+    }
+    if (input === '\u001b[B') {
+      return 'down';
+    }
+    return 'unknown';
+  };
+
+  const cleanup = (): void => {
+    stdin.removeListener('data', onData);
+    if (stdin.isTTY) {
+      stdin.setRawMode(false);
+    }
+    stdout.write('\x1b[2J\x1b[H');
+  };
+
+  const onData = (chunk: Buffer): void => {
+    const key = readKey(chunk);
+
+    if (key === 'quit') {
+      cleanup();
+      process.exit(0);
+    }
+
+    if (mode === 'details') {
+      mode = 'list';
+      render();
+      return;
+    }
+
+    if (key === 'up') {
+      selectedIndex = Math.max(0, selectedIndex - 1);
+      render();
+      return;
+    }
+    if (key === 'down') {
+      selectedIndex = Math.min(files.length - 1, selectedIndex + 1);
+      render();
+      return;
+    }
+    if (key === 'enter' && files[selectedIndex]) {
+      mode = 'details';
+      showDetails(files[selectedIndex]);
+      return;
+    }
+  };
+
+  const onResize = (): void => {
+    if (mode === 'list') {
+      render();
+    }
+  };
+
+  process.on('SIGWINCH', onResize);
+  const cleanupOnExit = (): void => {
+    process.off('SIGWINCH', onResize);
+    cleanup();
+  };
+  process.on('exit', cleanupOnExit);
+
+  stdin.on('data', onData);
+  render();
 }
 
-// Calculate quality score from metrics (0-10 scale)
-function calculateQualityFromMetrics(metrics: NonNullable<DetectedFile['metrics']>): number {
-  const sectionScore = Math.min(metrics.sections / 5, 1) * 2;
-  const pathScore = Math.min(metrics.filePaths / 10, 1) * 2;
-  const commandScore = Math.min(metrics.commands / 5, 1) * 2;
-  const constraintScore = Math.min(metrics.constraints / 5, 1) * 2;
-  const wordScore = Math.min(metrics.wordCount / 500, 1) * 2;
-  return sectionScore + pathScore + commandScore + constraintScore + wordScore;
-}
-
-// Pattern browser
 export function listPatterns(): void {
-  console.log(chalk.cyan(HEADER));
-  console.log(chalk.bold.white('AVAILABLE PATTERNS\n'));
-  
+  console.log(LOGO);
+  console.log('\nAVAILABLE PATTERNS\n');
   for (const pattern of FILE_PATTERNS) {
-    console.log(chalk.cyan(`  ${pattern.name}`));
-    console.log(chalk.gray(`    Patterns: ${pattern.patterns.join(', ')}`));
-    console.log(chalk.gray(`    Tool: ${pattern.tool} | Level: ${pattern.level} | Weight: ${pattern.weight}`));
-    console.log();
+    console.log(`- ${pattern.name}`);
+    console.log(`  Patterns: ${pattern.patterns.join(', ')}`);
+    console.log(`  Tool: ${pattern.tool} | Level: ${pattern.level} | Weight: ${pattern.weight}\n`);
   }
 }
 
-// Level browser
 export function listLevels(): void {
-  console.log(chalk.cyan(HEADER));
-  console.log(chalk.bold.white('MATURITY LEVELS\n'));
-  
+  console.log(LOGO);
+  console.log('\nMATURITY LEVELS\n');
   for (const level of MATURITY_LEVELS) {
-    const bar = '█'.repeat(level.level) + '░'.repeat(8 - level.level);
-    console.log(chalk.cyan(`  Level ${level.level}: ${level.name}`));
-    console.log(chalk.gray(`    ${level.description}`));
-    console.log(chalk.gray(`    [${bar}]`));
-    console.log();
+    const bar = '#'.repeat(level.level) + '-'.repeat(8 - level.level);
+    console.log(`- Level ${level.level}: ${level.name}`);
+    console.log(`  ${level.description}`);
+    console.log(`  [${bar}]\n`);
   }
 }
